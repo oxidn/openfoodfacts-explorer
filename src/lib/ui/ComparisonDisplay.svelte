@@ -324,6 +324,34 @@
 			isWorst: novaGroup === worstGroup
 		};
 	}
+	function getIngredientText(product: Product): string | null {
+		return product.ingredients_text?.trim() || null;
+	}
+
+	function getIngredientItems(product: Product): string[] {
+		const ingredientItems: string[] = [];
+		const ingredients = [...(product.ingredients ?? [])].reverse();
+
+		while (ingredients.length > 0) {
+			const ingredient = ingredients.pop();
+			if (!ingredient) continue;
+
+			const ingredientText = ingredient.text?.trim();
+			if (ingredientText) ingredientItems.push(ingredientText);
+
+			if (ingredient.ingredients) {
+				ingredients.push(...[...ingredient.ingredients].reverse());
+			}
+		}
+
+		const fallbackIngredientText = getIngredientText(product);
+
+		return ingredientItems.length > 0
+			? ingredientItems
+			: fallbackIngredientText
+				? [fallbackIngredientText]
+				: [];
+	}
 
 	let dragSrcIndex: { code: string; idx: number } | null = null;
 </script>
@@ -403,6 +431,34 @@
 	{/if}
 {/snippet}
 
+{#snippet ingredientSection(product: Product)}
+	<details class="bg-base-200 rounded-box">
+		<summary class="cursor-pointer px-3 py-2 text-sm font-semibold">
+			{$_('compare.ingredients', { default: 'Ingredients' })}
+		</summary>
+
+		<div class="border-base-300 border-t px-3 py-2 text-sm">
+			{#if product.product_type === 'beauty'}
+				{@const ingredientItems = getIngredientItems(product)}
+
+				{#if ingredientItems.length > 0}
+					<ul class="list-disc space-y-1 pl-5">
+						{#each ingredientItems as ingredient, ingredientIndex (`${ingredient}-${ingredientIndex}`)}
+							<li>{ingredient}</li>
+						{/each}
+					</ul>
+				{:else}
+					<p>-</p>
+				{/if}
+			{:else}
+				<p class="whitespace-pre-wrap break-words">
+					{getIngredientText(product) ?? '-'}
+				</p>
+			{/if}
+		</div>
+	</details>
+{/snippet}
+
 <!-- Mobile: Card View -->
 <div class="block lg:hidden">
 	<div class="flex flex-col gap-4">
@@ -437,7 +493,9 @@
 						{product.quantity ?? ''}
 					</p>
 				</div>
-
+				<div class="mt-4 border-t pt-4">
+					{@render ingredientSection(product)}
+				</div>
 				{#if product.nutriscore_grade || product.nova_group || product.ecoscore_grade}
 					<div class="mt-4 border-t pt-4">
 						<p class="mb-2 text-sm font-semibold">{$_('compare.scores')}</p>
@@ -572,6 +630,17 @@
 				{#each products as product (product.code)}
 					<td class="text-center text-sm" animate:flip={{ duration: 300 }}>
 						{product.product_name ?? '-'}
+					</td>
+				{/each}
+			</tr>
+			<tr>
+				<td class="bg-base-100 sticky left-0 w-40 font-semibold">
+					{$_('compare.ingredients')}
+				</td>
+
+				{#each products as product (product.code)}
+					<td animate:flip={{ duration: 300 }}>
+						{@render ingredientSection(product)}
 					</td>
 				{/each}
 			</tr>
